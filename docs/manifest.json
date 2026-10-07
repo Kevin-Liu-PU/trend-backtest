@@ -30,7 +30,7 @@
     "metric": "training excess Sharpe",
     "folds": 5
   },
-  "source_sha256": "7765234c5bea8c080f53d279a8eea51c67020dee438319fd771de01ed143b864",
+  "source_sha256": "c8e9a0be3775655ec7657578070985b8c419d30f7031ef3dffab2ddd6aa23726",
   "runtime": {
     "python": "3.12.10",
     "numpy": "2.4.2",

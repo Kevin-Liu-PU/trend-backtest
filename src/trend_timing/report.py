@@ -4,7 +4,7 @@ from html import escape
 import numpy as np
 
 
-NAMES = {"Fixed SMA200": "固定 SMA200", "Buy and hold": "买入持有", "Walk-forward": "滚动择参"}
+NAMES = {"Fixed SMA200": "Fixed SMA200", "Buy and hold": "Buy and hold", "Walk-forward": "Walk-forward"}
 COLORS = ["#15786e", "#71849e", "#c28149"]
 
 
@@ -32,10 +32,10 @@ def _display_metrics(frame):
     if "strategy" in visible:
         visible["strategy"] = visible["strategy"].map(lambda name: NAMES.get(name, name))
     return visible.rename(columns={
-        "strategy": "模拟方案", "total_return": "累计收益",
-        "annualized_return": "年化收益", "max_drawdown": "最大回撤",
-        "excess_sharpe": "超额 Sharpe", "sessions": "期数",
-        "cost_bps": "单边成本 · bp", "lag": "延迟 · 期", "window": "SMA 窗口",
+        "strategy": "Strategy", "total_return": "Total return",
+        "annualized_return": "Annualized return", "max_drawdown": "Max drawdown",
+        "excess_sharpe": "Excess Sharpe", "sessions": "Sessions",
+        "cost_bps": "Cost per side (bp)", "lag": "Lag (sessions)", "window": "SMA window",
     })
 
 
@@ -48,8 +48,8 @@ def equity_svg(returns):
 
     def render_chart(width, height, left, top, inner_w, inner_h, css_class):
         right = left + inner_w
-        svg = [f'<svg class="{css_class}" viewBox="0 0 {width} {height}" role="img" aria-label="三组模拟的净值曲线，统一起点为100">',
-               '<title>合成数据净值对比</title>']
+        svg = [f'<svg class="{css_class}" viewBox="0 0 {width} {height}" role="img" aria-label="Equity curves for three simulations, each starting at 100">',
+               '<title>Equity comparison using synthetic data</title>']
         for value in np.linspace(lo, hi, 5):
             y = top + inner_h * (hi - value) / (hi - lo)
             svg.append(f'<line x1="{left}" y1="{y:.1f}" x2="{right}" y2="{y:.1f}" stroke="#e5ebe9"/>')
@@ -68,33 +68,33 @@ def equity_svg(returns):
 
 def build_html(metrics, returns, folds, stress, surface, manifest):
     execution = manifest["execution"]
-    fill_label = "开盘分段收益" if execution["fill"] == "open" else "收盘整日收益近似"
+    fill_label = "Open: split-interval returns" if execution["fill"] == "open" else "Close: whole-day approximation"
     visible = _display_metrics(metrics.drop(columns=["sessions"]))
     best = metrics.loc[metrics["total_return"].idxmax()]
-    negative_note = "三组模拟的累计收益均为负。" if (metrics["total_return"] < 0).all() else ""
-    conclusion = f"本次演示中，{NAMES.get(best['strategy'], best['strategy'])}的累计收益最高。{negative_note}"
+    negative_note = " All three simulations have negative total returns." if (metrics["total_return"] < 0).all() else ""
+    conclusion = f"{NAMES.get(best['strategy'], best['strategy'])} has the highest total return in this demonstration.{negative_note}"
     cards = []
     for index, row in enumerate(metrics.to_dict("records")):
         cards.append(f'''<article class="result-card" style="--series:{COLORS[index % len(COLORS)]}">
 <div class="strategy"><span class="series-dot"></span>{escape(NAMES.get(row['strategy'], row['strategy']))}</div>
-<div class="metric-label">累计收益</div><div class="metric-value">{_percent(row['total_return'])}</div>
-<div class="card-bottom"><span>最大回撤</span><strong>{_percent(row['max_drawdown'])}</strong></div></article>''')
+<div class="metric-label">Total return</div><div class="metric-value">{_percent(row['total_return'])}</div>
+<div class="card-bottom"><span>Max drawdown</span><strong>{_percent(row['max_drawdown'])}</strong></div></article>''')
     fold_view = folds[["fold", "train_end", "decision_start", "first_possible_fill", "window", "training_score"]].copy()
     fold_view["training_score"] = fold_view["training_score"].map(_number)
     fold_view = fold_view.rename(columns={
-        "fold": "轮次", "train_end": "训练截至", "decision_start": "决策开始",
-        "first_possible_fill": "最早可执行", "window": "选定 SMA", "training_score": "训练超额 Sharpe",
+        "fold": "Fold", "train_end": "Training ends", "decision_start": "Decisions begin",
+        "first_possible_fill": "First possible fill", "window": "Selected SMA", "training_score": "Training excess Sharpe",
     })
     stress_view = _display_metrics(stress[["cost_bps", "lag", "total_return", "max_drawdown", "excess_sharpe"]])
-    stress_view["单边成本 · bp"] = stress_view["单边成本 · bp"].map(lambda v: f"{v:g}")
+    stress_view["Cost per side (bp)"] = stress_view["Cost per side (bp)"].map(lambda v: f"{v:g}")
     surface_view = _display_metrics(surface[["window", "total_return", "max_drawdown", "excess_sharpe"]])
     sessions = len(returns)
     return f'''<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>trend-backtest · 趋势择时回测</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>trend-backtest</title>
 <style>
 :root{{--ink:#20312e;--muted:#63736e;--line:#dfe7e3;--paper:#fff;--teal:#15786e}}
-*{{box-sizing:border-box}}body{{margin:0;background:#f1f4f1;color:var(--ink);font:15px/1.7 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}}
+*{{box-sizing:border-box}}body{{margin:0;background:#f1f4f1;color:var(--ink);font:15px/1.7 "Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}}
 main{{max-width:1160px;margin:0 auto;padding:44px 44px 32px}}
 .masthead{{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:26px;border-bottom:1px solid var(--line)}}
 .brand{{font-size:17px;font-weight:750;letter-spacing:.02em;display:flex;align-items:center;gap:10px}}
@@ -116,14 +116,14 @@ h2{{font-size:24px;line-height:1.4;letter-spacing:-.025em;margin:0;font-weight:6
 .series-dot{{width:8px;height:8px;background:var(--series);border-radius:50%;flex:none}}
 .metric-label{{color:var(--muted);font-size:12px;margin-top:22px}}
 .metric-value{{font-size:42px;font-weight:600;letter-spacing:-.055em;line-height:1.35;font-variant-numeric:tabular-nums}}
-.card-bottom{{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #edf0ee;margin-top:18px;padding-top:12px;font-size:13px;color:var(--muted)}}
+.card-bottom{{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 10px;border-top:1px solid #edf0ee;margin-top:18px;padding-top:12px;font-size:13px;color:var(--muted)}}
 .card-bottom strong{{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}}
 .panel{{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:26px 28px}}
 .chart-header{{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:18px}}
 h3{{font-size:17px;line-height:1.5;margin:0;font-weight:650}}.scope{{font-size:13px;color:var(--muted);margin:0}}
 .legend{{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:6px}}
 .legend span{{display:inline-flex;align-items:center;gap:8px}}.legend i{{display:inline-block;width:18px;height:3px;border-radius:2px}}
-svg{{display:block;width:100%;height:auto}}.chart-mobile{{display:none}}svg text{{font:12px "Segoe UI","Microsoft YaHei",sans-serif;fill:#73817d}}
+svg{{display:block;width:100%;height:auto}}.chart-mobile{{display:none}}svg text{{font:12px "Segoe UI",sans-serif;fill:#73817d}}
 .chart-scroll{{overflow-x:auto}}.table-scroll{{overflow-x:auto}}
 table{{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}}
 th,td{{padding:14px 13px;border-bottom:1px solid #e9eeeb;white-space:nowrap;text-align:right!important}}
@@ -140,7 +140,7 @@ footer{{display:grid;grid-template-columns:1fr 1.25fr;gap:60px;border-top:1px so
 .footer-title{{font-size:13px;color:var(--ink);font-weight:650;margin:0 0 10px}}
 .downloads{{display:flex;gap:8px 18px;flex-wrap:wrap;max-width:380px}}
 a{{color:var(--teal);text-decoration:none}}a:hover{{text-decoration:underline}}
-.footer-notes{{text-align:right;max-width:550px;justify-self:end}}.footer-notes p{{margin:0 0 9px;line-height:1.85}}
+.footer-notes{{text-align:left;max-width:550px;justify-self:end}}.footer-notes p{{margin:0 0 9px;line-height:1.85}}
 .fingerprints{{margin-top:18px}}.fingerprints p{{margin:5px 0}}code{{font-family:Consolas,monospace;font-size:12px;overflow-wrap:anywhere}}
 @media(max-width:760px){{
 main{{padding:24px 20px}}.masthead{{padding-bottom:20px}}.edition{{font-size:10px}}
@@ -167,37 +167,37 @@ summary{{display:none}}details>.detail-content{{display:block}}footer{{gap:25px}
 }}
 </style></head><body><main>
 <header class="masthead"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>trend-backtest</div><div class="edition">SYNTHETIC DATA</div></header>
-<div class="hero"><p class="eyebrow">任务 / 趋势择时的离线验证</p><h1>比较趋势择时与买入持有</h1>
-<p class="intro">在同一组数据上，比较固定 SMA200、买入持有与滚动择参。把信号、交易成本和执行延迟纳入模拟，让每一步结果都可以复核。</p></div>
-<div class="run-settings" aria-label="本次运行设置">
-<div><span class="setting-label">执行方式</span><span class="setting-value">{fill_label}</span></div>
-<div><span class="setting-label">单边成本 / 信号延迟</span><span class="setting-value">{execution['cost_bps']:g} bp / {execution['lag']} 期</span></div>
-<div><span class="setting-label">共同评价区间 · {sessions:,} 期</span><span class="setting-value">{manifest['evaluation']['start']} — {manifest['evaluation']['end']}</span></div></div>
+<div class="hero"><p class="eyebrow">OFFLINE TREND-TIMING COMPARISON</p><h1>Trend timing vs. buy and hold</h1>
+<p class="intro">Compare fixed SMA200, buy and hold, and walk-forward selection on the same dataset. Each simulation accounts for signals, trading costs, and execution delays, with downloadable results for checking the calculations.</p></div>
+<div class="run-settings" aria-label="Run settings">
+<div><span class="setting-label">Execution model</span><span class="setting-value">{fill_label}</span></div>
+<div><span class="setting-label">Cost per side / signal lag</span><span class="setting-value">{execution['cost_bps']:g} bp / {execution['lag']} session(s)</span></div>
+<div><span class="setting-label">Common evaluation period · {sessions:,} sessions</span><span class="setting-value">{manifest['evaluation']['start']} — {manifest['evaluation']['end']}</span></div></div>
 <section aria-labelledby="results-title">
-<div class="section-top"><h2 id="results-title"><span class="section-index">01</span>核心结论</h2><p class="synthetic-note">合成数据演示，非真实投资业绩</p></div>
+<div class="section-top"><h2 id="results-title"><span class="section-index">01</span>Results</h2><p class="synthetic-note">Synthetic data, not real trading results</p></div>
 <p class="conclusion">{escape(conclusion)}</p><div class="result-grid">{"".join(cards)}</div></section>
 <section aria-labelledby="chart-title">
-<div class="section-top"><h2 id="chart-title"><span class="section-index">02</span>净值与风险</h2></div>
-<div class="panel"><div class="chart-header"><h3>同一区间，三条净值曲线</h3><p class="scope">连续组合切片 · 起点统一为 100</p></div>
+<div class="section-top"><h2 id="chart-title"><span class="section-index">02</span>Equity and risk</h2></div>
+<div class="panel"><div class="chart-header"><h3>Three curves over the same period</h3><p class="scope">Continuous portfolio slices · rebased to 100</p></div>
 {equity_svg(returns)}
-<div class="chart-table table-scroll" role="region" aria-label="评价区间的指标对比" tabindex="0">{_table(visible)}</div></div></section>
+<div class="chart-table table-scroll" role="region" aria-label="Metrics for the common evaluation period" tabindex="0">{_table(visible)}</div></div></section>
 <section aria-labelledby="details-title">
-<div class="section-top"><h2 id="details-title"><span class="section-index">03</span>验证细节</h2><p class="scope">{len(folds)} 轮滚动选择 · {len(stress)} 组执行检查 · {len(surface)} 个候选窗口</p></div>
-<div class="panel"><div class="detail-heading"><h3>滚动择参记录</h3><p class="scope">仅使用当时已有的训练数据</p></div>
-<p class="method-sentence">每轮从 SMA150 / 200 / 250 中按训练超额 Sharpe 选择窗口；仓位与成本跨轮次连续计算。</p>
-<div class="table-scroll" role="region" aria-label="滚动择参记录" tabindex="0">{_table(fold_view)}</div></div>
-<details><summary>成本与延迟敏感性</summary><div class="detail-content">
-<p class="scope">固定 SMA200 · 全部 {manifest['dataset']['sessions']:,} 期合成数据（含预热期）· {fill_label}</p>
-<div class="table-scroll" role="region" aria-label="执行敏感性指标" tabindex="0">{_table(stress_view)}</div></div></details>
-<details><summary>候选窗口对比</summary><div class="detail-content">
-<p class="scope">全部 {manifest['dataset']['sessions']:,} 期合成数据（含预热期）· {fill_label} · 单边 {execution['cost_bps']:g} bp / 延迟 {execution['lag']} 期</p>
-<div class="table-scroll" role="region" aria-label="候选窗口指标" tabindex="0">{_table(surface_view)}</div></div></details></section>
+<div class="section-top"><h2 id="details-title"><span class="section-index">03</span>Validation details</h2><p class="scope">{len(folds)} walk-forward folds · {len(stress)} execution checks · {len(surface)} candidate windows</p></div>
+<div class="panel"><div class="detail-heading"><h3>Walk-forward selections</h3><p class="scope">Training data available at each decision only</p></div>
+<p class="method-sentence">Each fold selects SMA150, 200, or 250 by training excess Sharpe. Holdings and costs remain continuous across folds.</p>
+<div class="table-scroll" role="region" aria-label="Walk-forward selection records" tabindex="0">{_table(fold_view)}</div></div>
+<details><summary>Cost and lag sensitivity</summary><div class="detail-content">
+<p class="scope">Fixed SMA200 · all {manifest['dataset']['sessions']:,} synthetic sessions, including warmup · {fill_label}</p>
+<div class="table-scroll" role="region" aria-label="Execution sensitivity metrics" tabindex="0">{_table(stress_view)}</div></div></details>
+<details><summary>Candidate window comparison</summary><div class="detail-content">
+<p class="scope">All {manifest['dataset']['sessions']:,} synthetic sessions, including warmup · {fill_label} · {execution['cost_bps']:g} bp per side / {execution['lag']}-session lag</p>
+<div class="table-scroll" role="region" aria-label="Candidate window metrics" tabindex="0">{_table(surface_view)}</div></div></details></section>
 <footer>
-<div><p class="footer-title">下载本次运行</p><div class="downloads"><a href="metrics.csv">指标</a><a href="daily_returns.csv">逐期收益</a><a href="walk_forward_folds.csv">择参记录</a><a href="stress.csv">执行检查</a><a href="parameter_surface.csv">窗口对比</a><a href="manifest.json">配置与校验值</a></div>
-<div class="fingerprints"><p>数据 SHA-256<br><code title="{manifest['dataset']['sha256']}">{manifest['dataset']['sha256'][:12]}…{manifest['dataset']['sha256'][-8:]}</code></p><p>源码 SHA-256<br><code title="{manifest['source_sha256']}">{manifest['source_sha256'][:12]}…{manifest['source_sha256'][-8:]}</code></p></div></div>
-<aside class="footer-notes" aria-label="模型口径与范围"><p class="footer-title">模型口径与范围</p>
-<p>评价区间取自连续模拟：固定 SMA200 与买入持有保留此前仓位，滚动择参从现金开始，待首个决策满足延迟后执行。年化按 252 期计算；超额 Sharpe 扣除现金收益。</p>
-<p>收盘后生成信号；开盘模式分别归属隔夜与日内收益。仅持有无杠杆股票或现金，换仓计两条交易腿；成本从逐期收益中近似扣除。收盘模式是整日收益近似，不能视为真实的下一开盘成交。</p>
-<p>敏感性与窗口对比使用全样本，属于诊断，不能与主评价区间直接比较，也不用于事后挑选固定 SMA200。合成价格与工作日日期仅演示软件流程；不含券商连接、订单、税务、真实行情、部分成交或统计显著性结论。<span lang="en">Synthetic data only.</span></p>
+<div><p class="footer-title">Download this run</p><div class="downloads"><a href="metrics.csv">Metrics</a><a href="daily_returns.csv">Daily returns</a><a href="walk_forward_folds.csv">Fold selections</a><a href="stress.csv">Execution checks</a><a href="parameter_surface.csv">Window comparison</a><a href="manifest.json">Settings and hashes</a></div>
+<div class="fingerprints"><p>Data SHA-256<br><code title="{manifest['dataset']['sha256']}">{manifest['dataset']['sha256'][:12]}…{manifest['dataset']['sha256'][-8:]}</code></p><p>Source SHA-256<br><code title="{manifest['source_sha256']}">{manifest['source_sha256'][:12]}…{manifest['source_sha256'][-8:]}</code></p></div></div>
+<aside class="footer-notes" aria-label="Model assumptions and scope"><p class="footer-title">Model assumptions and scope</p>
+<p>The evaluation period is a slice of continuous simulations. Fixed SMA200 and buy and hold retain their earlier positions; walk-forward starts in cash until its first decision fills after the configured lag. Annualization uses 252 sessions, and excess Sharpe subtracts the cash return.</p>
+<p>Signals are formed after the close. The open model assigns overnight and intraday returns to the appropriate holdings. Positions are unleveraged equity or cash; switching costs two traded sides, with costs approximately deducted from daily returns. The close model is a whole-day-return approximation, not realistic next-open execution.</p>
+<p>Sensitivity and window comparisons use the full sample as diagnostics. They are not directly comparable with the main evaluation period and are not used to choose the fixed SMA200 rule after seeing the results. Synthetic prices and weekday dates demonstrate the software only. There are no broker connections, orders, taxes, real market data, partial fills, or claims of statistical significance. Synthetic data only.</p>
 </aside></footer></main></body></html>
 '''
