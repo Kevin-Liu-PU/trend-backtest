@@ -1,0 +1,45 @@
+{
+  "project": "trend-backtest",
+  "version": "0.1.0",
+  "synthetic_data_only": true,
+  "execution": {
+    "fill": "open",
+    "cost_bps": 10.0,
+    "lag": 1
+  },
+  "dataset": {
+    "file": "packaged sample.csv",
+    "seed": 20261007,
+    "sessions": 2016,
+    "sha256": "cac1fd04bbc7be5571c9c6d1b7b207b622e47614ed8c8fce8c5946b497f2bc41",
+    "generator": "row-wise Gaussian draws; fixed manufactured regime schedule"
+  },
+  "evaluation": {
+    "start": "2032-11-24",
+    "end": "2037-09-22",
+    "initialization": "slice of continuous simulations; WF starts in cash"
+  },
+  "walk_forward": {
+    "windows": [
+      150,
+      200,
+      250
+    ],
+    "initial_train_bars": 756,
+    "test_bars": 252,
+    "metric": "training excess Sharpe",
+    "folds": 5
+  },
+  "source_sha256": "7765234c5bea8c080f53d279a8eea51c67020dee438319fd771de01ed143b864",
+  "runtime": {
+    "python": "3.12.10",
+    "numpy": "2.4.2",
+    "pandas": "3.0.0"
+  },
+  "limits": [
+    "synthetic mechanics only",
+    "costs deducted from daily return as approximation",
+    "one-hot unleveraged holdings",
+    "no broker, tax, real data or predictive claims"
+  ]
+}
